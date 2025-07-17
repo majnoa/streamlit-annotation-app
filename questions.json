@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "question": "What is the capital of France?",
+    "choices": ["Paris", "Berlin", "Madrid", "Rome"]
+  },
+  {
+    "id": 2,
+    "question": "Which animal is a mammal?",
+    "choices": ["Shark", "Whale", "Lizard", "Tuna"]
+  },
+  {
+    "id": 3,
+    "question": "What color is the sky on a clear day?",
+    "choices": ["Blue", "Red", "Green", "Yellow"]
+  },
+  {
+    "id": 4,
+    "question": "How many legs does a spider have?",
+    "choices": ["Six", "Eight", "Ten", "Twelve"]
+  },
+  {
+    "id": 5,
+    "question": "Which planet is known as the Red Planet?",
+    "choices": ["Earth", "Mars", "Venus", "Jupiter"]
+  },
+  {
+    "id": 6,
+    "question": "What is 2 + 2?",
+    "choices": ["3", "4", "5", "6"]
+  },
+  {
+    "id": 7,
+    "question": "Which language is spoken in Brazil?",
+    "choices": ["Spanish", "Portuguese", "French", "German"]
+  },
+  {
+    "id": 8,
+    "question": "Which ocean is the largest?",
+    "choices": ["Atlantic", "Indian", "Pacific", "Arctic"]
+  },
+  {
+    "id": 9,
+    "question": "What is the boiling point of water?",
+    "choices": ["90°C", "100°C", "110°C", "120°C"]
+  },
+  {
+    "id": 10,
+    "question": "What is the square root of 9?",
+    "choices": ["2", "3", "4", "5"]
+  }
+]
