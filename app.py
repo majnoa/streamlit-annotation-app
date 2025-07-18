@@ -47,11 +47,14 @@ current_page = st.session_state.page
 start = (current_page - 1) * QUESTIONS_PER_PAGE
 end = min(start + QUESTIONS_PER_PAGE, len(questions))
 
-# --- Safe check if page already submitted ---
-already_submitted = any(
-    str(row["annotator_id"]) == str(annotator_id) and str(row["page"]) == str(current_page)
-    for _, row in submitted_df.iterrows()
-)
+# --- Function to check if page is already submitted ---
+def is_page_submitted(submitted_df, annotator_id, page):
+    return any(
+        str(row["annotator_id"]) == str(annotator_id) and str(row["page"]) == str(page)
+        for _, row in submitted_df.iterrows()
+    )
+
+already_submitted = is_page_submitted(submitted_df, annotator_id, current_page)
 
 st.subheader(f"🔍 Questions – Page {current_page}")
 responses = {}
@@ -64,7 +67,7 @@ for q in questions[start:end]:
 
     key = f"q_{qid}"
     saved = df[
-        (df["annotator_id"] == annotator_id) &
+        (df["annotator_id"] == annotator_id) & 
         (df["question_id"] == qid)
     ]
     default = saved["answer"].values[0] if not saved.empty else None
@@ -101,13 +104,17 @@ if st.button("✅ Submit This Page") and not already_submitted:
     ]
 
     try:
-        # Update main sheet (Sheet1)
+        # Update in-progress sheet
         updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
         conn.update(data=updated_df, worksheet="sheet1")
 
-        # Append to submissions
+        # Append to final submissions
         updated_submissions = pd.concat([submitted_df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
         conn.update(data=updated_submissions, worksheet="submissions")
+
+        # 🔁 Reread to ensure locked state is updated immediately
+        submitted_df = conn.read(worksheet="submissions")
+        already_submitted = is_page_submitted(submitted_df, annotator_id, current_page)
 
         st.success(f"✅ Page {current_page} submitted and finalized.")
         st.rerun()
