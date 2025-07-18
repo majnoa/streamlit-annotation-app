@@ -28,6 +28,17 @@ for dframe in [df, submitted_df]:
 # --- Annotator login ---
 st.title("📝 Annotation Task")
 annotator_id = st.text_input("Enter your annotator ID:")
+ALLOWED_ANNOTATORS = {"Hawk", "Joey", "Maja", "AJ", "Qianqian", "Student1"}
+
+if not annotator_id:
+    st.warning("Please enter your ID to begin.")
+    st.stop()
+
+if annotator_id not in ALLOWED_ANNOTATORS:
+    st.error(f"❌ '{annotator_id}' is not a valid annotator ID.")
+    st.info("Valid IDs are: " + ", ".join(sorted(ALLOWED_ANNOTATORS)))
+    st.stop()
+
 if not annotator_id:
     st.stop()
 
