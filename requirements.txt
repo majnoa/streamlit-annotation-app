@@ -1,4 +1,5 @@
 streamlit
 gspread
+streamlit-gsheets
 oauth2client
 google-auth
