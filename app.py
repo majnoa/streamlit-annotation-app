@@ -67,13 +67,15 @@ for q in questions[start:end]:
         (df["annotator_id"] == annotator_id) &
         (df["question_id"] == qid)
     ]
+    default = saved["answer"].values[0] if not saved.empty else None
 
     # Safely get the index of the saved answer
     if default is not None and default in q["choices"]:
         index = q["choices"].index(default)
     else:
         index = 0
-        
+
+
     selected = st.radio(
         f"Answer for Q{qid}:",
         q["choices"],
