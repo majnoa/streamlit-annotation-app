@@ -1,41 +1,28 @@
 import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
 from datetime import datetime
 
-st.title("✅ Google Sheets Write Test")
+st.title("✅ Native Streamlit Google Sheets Write Example")
 
-try:
-    # Use flat credentials from secrets
-    gspread_secrets = st.secrets["gspread"]
-    creds_dict = {
-        "type": gspread_secrets["type"],
-        "project_id": gspread_secrets["project_id"],
-        "private_key_id": gspread_secrets["private_key_id"],
-        "private_key": gspread_secrets["private_key"],
-        "client_email": gspread_secrets["client_email"],
-        "client_id": gspread_secrets["client_id"],
-        "auth_uri": gspread_secrets["auth_uri"],
-        "token_uri": gspread_secrets["token_uri"],
-        "auth_provider_x509_cert_url": gspread_secrets["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": gspread_secrets["client_x509_cert_url"],
-    }
+# Connect to GSheets
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-    # Create credentials
-    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+# Read current data
+df = conn.read()
 
-    # Authorize and connect
-    client = gspread.authorize(credentials)
-    worksheet = client.open_by_key(gspread_secrets["spreadsheet_id"]).worksheet(gspread_secrets["worksheet_name"])
+# Append a row
+new_row = {
+    "timestamp": datetime.utcnow().isoformat(),
+    "status": "✅ Success!",
+    "note": "Streamlit wrote this!"
+}
+df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
-    # Append test row
-    now = datetime.utcnow().isoformat()
-    worksheet.append_row([now, "✅ Success!", "Streamlit wrote this"])
+# Write back
+conn.update(df)
 
-    st.success("Row successfully written to Google Sheet!")
-    st.write("📄 Current Sheet Contents:")
-    st.write(worksheet.get_all_records())
+st.success("Row written and saved!")
 
-except Exception as e:
-    st.error(f"❌ Error: {e}")
+# Show contents
+st.dataframe(df)
