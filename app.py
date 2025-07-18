@@ -2,12 +2,18 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
 import pandas as pd
+import json
 
-# --- Connect to the Google Sheet ---
+# --- Load questions ---
+QUESTIONS_FILE = "questions.json"
+with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
+    questions = json.load(f)
+
+# --- Connect to Google Sheets ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 df = conn.read()
 
-st.title("📝 Annotation Logger")
+st.title("📝 Annotation Task")
 
 # --- Ensure expected columns exist ---
 EXPECTED_COLUMNS = ["timestamp", "annotator_id", "page", "question_id", "answer"]
@@ -18,34 +24,40 @@ else:
         if col not in df.columns:
             df[col] = ""
 
-# --- Show sheet contents ---
-st.subheader("📄 Current Sheet Contents")
-st.dataframe(df)
+# --- Annotator login ---
+annotator_id = st.text_input("Enter your annotator ID:")
+if not annotator_id:
+    st.stop()
 
-# --- Input form ---
-st.subheader("➕ Add New Annotation")
-with st.form("annotation_form"):
-    annotator_id = st.text_input("Annotator ID")
-    page = st.number_input("Page Number", min_value=0, step=1)
-    question_id = st.text_input("Question ID")
-    answer = st.selectbox("Answer", ["0", "1", "2", "3", "4"])
-    submitted = st.form_submit_button("Submit")
+page = 1  # Fixed page for now
 
-# --- On submission ---
-if submitted:
-    new_row = pd.DataFrame([{
-        "timestamp": datetime.utcnow().isoformat(),
-        "annotator_id": annotator_id,
-        "page": page,
-        "question_id": question_id,
-        "answer": answer
-    }])
+# --- Render questions ---
+st.subheader("🔍 Questions")
+responses = {}
+for q in questions:
+    qid = str(q["id"])
+    st.markdown(f"**Q{qid}**", unsafe_allow_html=True)
+    st.markdown(q["question"], unsafe_allow_html=True)
+    selected = st.radio(f"Answer for Q{qid}:", q["choices"], key=f"q_{qid}")
+    responses[qid] = selected
+    st.markdown("---")
 
-    updated_df = pd.concat([df, new_row], ignore_index=True)[EXPECTED_COLUMNS]
-
+# --- Submit answers ---
+if st.button("✅ Submit"):
+    new_rows = []
+    now = datetime.utcnow().isoformat()
+    for qid, answer in responses.items():
+        new_rows.append({
+            "timestamp": now,
+            "annotator_id": annotator_id,
+            "page": page,
+            "question_id": qid,
+            "answer": answer
+        })
+    updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
     try:
         conn.update(data=updated_df)
-        st.success("✅ Annotation submitted!")
+        st.success("✅ Responses submitted and saved to Google Sheets!")
         st.rerun()
     except Exception as e:
         st.error(f"❌ Failed to update sheet: {e}")
