@@ -1,0 +1,122 @@
+original_verb,lemmatized,synset,definition
+adjust,adjust,adjust.v.01,alter or regulate so as to achieve accuracy or conform to a standard
+assemble,assemble,assemble.v.01,create by putting components or members together
+block,block,obstruct.v.02,block passage through
+blow,blow,blow.v.01,exhale hard
+board,board,board.v.01,"get on board of (trains, buses, ships, aircraft, etc.)"
+break,break,break.v.05,destroy the integrity of; usually by force; cause to separate into pieces or fragments
+buy,buy,buy.v.01,obtain by purchase; acquire by means of a financial transaction
+carry,carry,transport.v.02,"move while supporting, either in a vehicle or in one's hands or on one's body"
+catch,catch,catch.v.04,take hold of so as to seize or restrain or stop the motion of
+chase,chase,chase.v.01,go after with the intent to catch
+check,check,check.v.01,"examine so as to determine accuracy, quality, or condition"
+clean,clean,clean.v.01,"make clean by removing dirt, filth, or unwanted substances from"
+control,control,operate.v.03,handle and cause to function
+cook,cook,cook.v.01,prepare a hot meal
+cut,cut,cut.v.01,separate with or as if with an instrument
+cut_with,cut,cut.v.01,separate with or as if with an instrument
+direct,direct,steer.v.01,direct the course; determine the direction of travelling
+drag,drag,drag.v.01,"pull, as against a resistance"
+dribble,dribble,dribble.v.03,"propel,"
+drive,drive,drive.v.01,operate or control a vehicle
+dry,dry,dry.v.01,remove the moisture from and make dry
+eat,eat,eat.v.01,take in solid food
+eat_at,eat,eat.v.01,take in solid food
+exit,exit,exit.v.01,move out of or depart from
+feed,feed,feed.v.01,provide as food
+fill,fill,fill.v.01,"make full, also in a metaphorical sense"
+flip,flip,flip.v.04,toss with a sharp movement so as to cause to turn over in the air
+flush,flush,flush.v.05,"rinse, clean, or empty with a liquid"
+fly,fly,fly.v.03,operate an airplane
+greet,greet,greet.v.01,express greetings upon meeting someone
+grind,grind,slide.v.03,move smoothly along a surface
+groom,groom,groom.v.03,care for one's external appearance
+herd,herd,herd.v.03,"keep, move, or drive animals"
+hit,hit,hit.v.01,cause to move by striking
+hold,hold,hold.v.02,have or hold in one's hands or grip
+hop_on,hop_on,hop_on.v.01,get up on the back of
+hose,hose,hose.v.01,water with a hose
+hug,hug,embrace.v.02,"squeeze (someone) tightly in your arms, usually with fondness"
+hunt,hunt,hunt.v.01,pursue for food or sport (as of wild animals)
+inspect,inspect,inspect.v.01,look over carefully
+install,install,install.v.01,set up for use
+jump,jump,jump.v.01,move forward by leaps and bounds
+kick,kick,kick.v.01,drive or propel with the foot
+kiss,kiss,snog.v.01,"touch with the lips or press the lips (against someone's mouth or other body part) as an expression of love, greeting, etc."
+lasso,lasso,lasso.v.01,catch with a lasso
+launch,launch,launch.v.02,propel with force
+lick,lick,lick.v.02,pass the tongue over
+lift,lift,lift.v.02,take hold of something and move it to a different location
+light,light,ignite.v.01,cause to start burning; subject to fire or great heat
+load,load,load.v.01,fill or place a load on
+lose,lose,lose.v.01,"fail to keep or to maintain; cease to have, either physically or in an abstract sense"
+make,make,make.v.15,make by shaping or bringing together constituents
+milk,milk,milk.v.01,take milk from female mammals
+move,move,move.v.02,"cause to move or shift into a new position or place, both in a concrete and in an abstract sense"
+open,open,open.v.01,cause to open or to become open
+operate,operate,operate.v.03,handle and cause to function
+pack,pack,pack.v.01,arrange in a container
+paint,paint,paint.v.02,apply paint to; coat with paint
+park,park,park.v.02,maneuver a vehicle into a parking space
+pay,pay,pay.v.01,"give money, usually in exchange for goods or services"
+peel,peel,skin.v.04,strip the skin off
+pet,pet,pet.v.01,stroke or caress gently
+pick,pick,pick.v.01,select carefully from a group
+pick_up,pick_up,pick_up.v.02,take up by hand
+point,point,charge.v.17,direct into a position for use
+pour,pour,decant.v.01,pour out
+pull,pull,pull.v.01,cause to move by pulling
+push,push,push.v.01,"move with force,"
+race,race,race.v.04,cause to move fast or to rush or race
+read,read,read.v.01,interpret something that is written or printed
+release,release,let_go_of.v.01,"release, as from one's grip"
+repair,repair,repair.v.01,restore by replacing a part or putting together what is torn or broken
+ride,ride,ride.v.01,"sit and travel on the back of animal, usually while controlling its motions"
+row,row,row.v.01,propel with oars
+run,run,run.v.26,cause an animal to move fast
+sail,sail,sail.v.01,traverse or travel on (a body of water)
+scratch,scratch,rub.v.03,scrape or rub as if to relieve itching
+serve,serve,serve.v.15,put the ball into play
+set,set,set.v.08,set to a certain position or cause to operate correctly
+shear,shear,shear.v.01,cut with shears
+sign,sign,sign.v.01,mark with one's signature; write one's name (on)
+sip,sip,sip.v.01,drink in sips
+slide,slide,slide.v.03,move smoothly along a surface
+smell,smell,smell.v.01,inhale the odor of; perceive by the olfactory sense
+spin,spin,whirl.v.02,cause to spin
+squeeze,squeeze,squash.v.01,"to compress with violence, out of natural shape or condition"
+stab,stab,stab.v.02,stab or pierce
+stick,stick,stick.v.13,pierce or penetrate or puncture with something pointed
+stir,stir,stir.v.08,mix or add by stirring
+straddle,straddle,straddle.v.01,sit or stand astride of
+swing,swing,swing.v.01,"move in a curve or arc, usually with the intent of hitting"
+tag,tag,tag.v.02,touch a player while he is holding the ball
+teach,teach,teach.v.01,impart skills or knowledge to
+text_on,text_on,message.v.03,send a message
+throw,throw,throw.v.01,propel through the air
+tie,tie,tie.v.01,"fasten or secure with a rope, string, or cord"
+toast,toast,toast.v.02,propose a toast to
+train,train,coach.v.01,"teach and supervise (someone); act as a trainer or coach (to), as in sports"
+turn,turn,turn.v.04,cause to move around or rotate
+walk,walk,walk.v.09,make walk
+wash,wash,wash.v.03,"cleanse with a cleaning agent, such as soap, and water"
+watch,watch,watch.v.01,look attentively
+wave,wave,beckon.v.01,signal with the hands or nod
+wear,wear,wear.v.09,put clothing on one's body
+wield,wield,wield.v.02,handle effectively
+zip,zip,zip_up.v.01,close with a zipper
+brush,brush,brush.v.01,"rub with a brush, or as if with a brush"
+brush_with,brush,brush.v.01,"rub with a brush, or as if with a brush"
+drink,drink,drink.v.01,take in liquids
+drink_with,drink,drink.v.01,take in liquids
+lie,lie,lie.v.02,"be lying, be prostrate; be in a horizontal position"
+lie_on,lie,lie.v.02,"be lying, be prostrate; be in a horizontal position"
+sit,sit,sit.v.01,be seated
+sit_on,sit,sit.v.01,be seated on
+sit_at,sit,sit.v.01,be seated at
+stand,stand,stand.v.01,be standing; be upright
+stand_on,stand,stand.v.01,be standing; be upright
+stand_under,stand,stand.v.01,be standing; be upright
+stop,stop,stop.v.05,cause to stop
+talk_on,talk,call.v.03,get or try to get into communication (with someone) by telephone
+type_on,type,type.v.01,write by means of a keyboard with types
