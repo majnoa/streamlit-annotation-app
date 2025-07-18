@@ -20,7 +20,36 @@ total_pages = (len(questions) - 1) // QUESTIONS_PER_PAGE + 1
 
 # --- Annotator Login ---
 st.title("Annotation Task")
-ALLOWED_ANNOTATORS = {"Hawk", "Joey", "Maja", "AJ", "Qianqian", "Student1"}
+st.markdown("""
+### 📋 Annotator Guidelines
+
+Welcome! Thank you so much for taking part in this user study. 
+            
+Your task: review the similarity of the two given labels/phrases
+
+
+- You will be shown **pairs of labels** and asked to rate how similar they are.
+- We also provide definitions for each label to help you understand their meanings if needed 
+    (sometimes the word given in the definition do not perfectly match please ignore that and treat it as a definition of the label). 
+- Use the **radio buttons** to choose a similarity level from 0 to 4.
+
+Notes:
+- All questions on a page must be answered before submission to be properly stored.
+- to indicate that your answer was accepted the backround color of the questions will change from gray to black
+- Once all questions on a page are answered, a **submit button appears** at the bottom to submit your answers for the whole page
+- Submit one page at a time. 
+- After submitting a page, you cannot change your answers for that page and your answers are saved for next time you log in.
+            
+**BUG**: for the last question on the page to change color after annotation you sometimes need to click another option of that question.
+Sorry for the inconvenience. 
+            
+!!!! You may return later to complete the rest !!!! 
+just use the same ID to continue where you left off.
+
+If you have any questions, contact me either 
+via email mnoack@go.olemiss.edu or phone +1 662 380 1662 (whatapp, direct message, or call).
+""")
+ALLOWED_ANNOTATORS = {"Hawk", "Joey", "Maja", "AJ", "Qinqian", "Student1"}
 
 annotator_id = st.text_input("Enter your name or ID:")
 
@@ -91,7 +120,7 @@ for q in questions[start_idx:end_idx]:
     with st.container():
         if unanswered:
             st.markdown(
-                f'<div style="background-color:#6892A4;padding:10px;border-radius:5px">'
+                f'<div style="background-color:#494949;padding:10px;border-radius:5px">'
                 f"{q['question']}</div>",
                 unsafe_allow_html=True
             )
