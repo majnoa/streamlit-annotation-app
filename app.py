@@ -44,7 +44,7 @@ if submitted:
     updated_df = pd.concat([df, new_row], ignore_index=True)[EXPECTED_COLUMNS]
 
     try:
-        conn.update(updated_df)
+        conn.update(data=updated_df)
         st.success("✅ Annotation submitted!")
         st.rerun()
     except Exception as e:
