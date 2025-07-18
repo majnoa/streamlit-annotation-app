@@ -39,9 +39,6 @@ if annotator_id not in ALLOWED_ANNOTATORS:
     st.info("Valid IDs are: " + ", ".join(sorted(ALLOWED_ANNOTATORS)))
     st.stop()
 
-if not annotator_id:
-    st.stop()
-
 # --- Page number state ---
 if "page" not in st.session_state:
     st.session_state.page = 1
@@ -69,6 +66,7 @@ already_submitted = is_page_submitted(submitted_df, annotator_id, current_page)
 
 st.subheader(f"🔍 Questions – Page {current_page}")
 responses = {}
+all_answered = True  # Track if all questions are answered
 
 # --- Display questions ---
 for q in questions[start:end]:
@@ -78,58 +76,67 @@ for q in questions[start:end]:
 
     key = f"q_{qid}"
     saved = df[
-        (df["annotator_id"] == annotator_id) & 
+        (df["annotator_id"] == annotator_id) &
         (df["question_id"] == qid)
     ]
     default = saved["answer"].values[0] if not saved.empty else None
 
-    # Safely get the index of the saved answer
-    if default is not None and default in q["choices"]:
-        index = q["choices"].index(default)
+    # Prepare choices with a default placeholder
+    choices = ["⬜ Please select an answer"] + q["choices"]
+    if default in q["choices"]:
+        index = q["choices"].index(default) + 1  # shift by 1 due to placeholder
     else:
         index = 0
 
     selected = st.radio(
         f"Answer for Q{qid}:",
-        q["choices"],
+        choices,
         key=key,
         index=index,
         disabled=already_submitted
     )
 
-    responses[qid] = selected
+    # If not answered yet, mark that not all answered
+    if selected == "⬜ Please select an answer":
+        all_answered = False
+    else:
+        responses[qid] = selected
+
     st.markdown("---")
 
 # --- Save if submit clicked ---
 if st.button("✅ Submit This Page") and not already_submitted:
-    now = datetime.utcnow().isoformat()
-    new_rows = [
-        {
-            "timestamp": now,
-            "annotator_id": annotator_id,
-            "page": current_page,
-            "question_id": qid,
-            "answer": answer
-        }
-        for qid, answer in responses.items()
-    ]
+    if not all_answered:
+        st.warning("⚠️ Please answer all questions before submitting.")
+    else:
+        now = datetime.utcnow().isoformat()
+        new_rows = [
+            {
+                "timestamp": now,
+                "annotator_id": annotator_id,
+                "page": current_page,
+                "question_id": qid,
+                "answer": answer
+            }
+            for qid, answer in responses.items()
+        ]
 
-    try:
-        # Update in-progress sheet
-        updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
-        conn.update(data=updated_df, worksheet="sheet1")
+        try:
+            # Update in-progress sheet
+            updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
+            conn.update(data=updated_df, worksheet="sheet1")
 
-        # Append to final submissions
-        updated_submissions = pd.concat([submitted_df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
-        conn.update(data=updated_submissions, worksheet="submissions")
+            # Append to final submissions
+            updated_submissions = pd.concat([submitted_df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
+            conn.update(data=updated_submissions, worksheet="submissions")
 
-        # 🔁 Reread to ensure locked state is updated immediately
-        submitted_df = conn.read(worksheet="submissions")
-        already_submitted = is_page_submitted(submitted_df, annotator_id, current_page)
+            # 🔁 Reread to ensure locked state is updated immediately
+            submitted_df = conn.read(worksheet="submissions")
+            already_submitted = is_page_submitted(submitted_df, annotator_id, current_page)
 
-        st.success(f"✅ Page {current_page} submitted and finalized.")
-        st.rerun()
-    except Exception as e:
-        st.error(f"❌ Failed to update sheets: {e}")
+            st.success(f"✅ Page {current_page} submitted and finalized.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Failed to update sheets: {e}")
 elif already_submitted:
     st.info("✅ This page has already been submitted and is locked.")
