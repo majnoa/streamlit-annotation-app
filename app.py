@@ -5,8 +5,8 @@ import os
 # --- Config ---
 QUESTIONS_PER_PAGE = 10
 QUESTIONS_FILE = "questions.json"
-RESPONSES_DIR = "responses"
-SUBMITTED_DIR = "responses_submitted"
+RESPONSES_DIR = "/responses/responses_in_progress"
+SUBMITTED_DIR = "/responses/responses_submitted"
 
 os.makedirs(RESPONSES_DIR, exist_ok=True)
 os.makedirs(SUBMITTED_DIR, exist_ok=True)
@@ -91,11 +91,12 @@ for q in questions[start_idx:end_idx]:
         if unanswered:
             st.markdown(
                 f'<div style="background-color:#6892A4;padding:10px;border-radius:5px">'
-                f"<strong>Q{qid}:</strong> {q['question']}</div>",
+                f"{q['question']}</div>",
                 unsafe_allow_html=True
             )
         else:
-            st.markdown(f"**Q{qid}: {q['question']}**")
+            st.markdown(q["question"], unsafe_allow_html=True)
+
 
         selected = st.radio(
             f"Select an answer for Q{qid}",
