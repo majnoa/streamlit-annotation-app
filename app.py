@@ -70,12 +70,13 @@ for q in questions[start:end]:
     default = saved["answer"].values[0] if not saved.empty else None
 
     selected = st.radio(
-        f"Answer for Q{qid}:", 
-        q["choices"], 
+        f"Answer for Q{qid}:",
+        q["choices"],
         key=key,
-        index=q["choices"].index(default) if default in q["choices"] else 0,
+        index=index,
         disabled=already_submitted
     )
+
     responses[qid] = selected
     st.markdown("---")
 
