@@ -1,15 +1,59 @@
 import streamlit as st
 import json
-import os
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+
+# --- Google Sheets: Load + Save ---
+def load_responses_from_sheet(annotator_id: str) -> dict:
+    creds_dict = json.loads(st.secrets["gspread"]["gcp_service_account"])
+    spreadsheet_id = st.secrets["gspread"]["spreadsheet_id"]
+    worksheet_name = st.secrets["gspread"]["worksheet_name"]
+
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    worksheet = client.open_by_key(spreadsheet_id).worksheet(worksheet_name)
+
+    responses = {}
+    all_rows = worksheet.get_all_records()
+    for row in all_rows:
+        if row["annotator_id"] == annotator_id:
+            responses[str(row["question_id"])] = row["answer"]
+    return responses
+
+def page_already_submitted(annotator_id: str, page: int, total_questions: int) -> bool:
+    creds_dict = json.loads(st.secrets["gspread"]["gcp_service_account"])
+    spreadsheet_id = st.secrets["gspread"]["spreadsheet_id"]
+    worksheet_name = st.secrets["gspread"]["worksheet_name"]
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    worksheet = client.open_by_key(spreadsheet_id).worksheet(worksheet_name)
+    all_rows = worksheet.get_all_records()
+    count = sum(1 for row in all_rows if row["annotator_id"] == annotator_id and row["page"] == page)
+    return count >= total_questions
+
+def save_to_gsheet(responses: dict, annotator_id: str, page: int):
+    creds_dict = json.loads(st.secrets["gspread"]["gcp_service_account"])
+    spreadsheet_id = st.secrets["gspread"]["spreadsheet_id"]
+    worksheet_name = st.secrets["gspread"]["worksheet_name"]
+
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    worksheet = client.open_by_key(spreadsheet_id).worksheet(worksheet_name)
+
+    now = datetime.utcnow().isoformat()
+    for qid, answer in responses.items():
+        worksheet.append_row([now, annotator_id, page, qid, answer])
 
 # --- Config ---
 QUESTIONS_PER_PAGE = 10
 QUESTIONS_FILE = "questions.json"
-RESPONSES_DIR = "responses"
-SUBMITTED_DIR = "responses_submitted"
-
-os.makedirs(RESPONSES_DIR, exist_ok=True)
-os.makedirs(SUBMITTED_DIR, exist_ok=True)
 
 # --- Load Questions ---
 with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
@@ -31,14 +75,7 @@ if annotator_id not in ALLOWED_ANNOTATORS:
     st.error(f"❌ '{annotator_id}' is not a valid annotator ID.")
     st.stop()
 
-response_file = os.path.join(RESPONSES_DIR, f"{annotator_id}.json")
-
-# --- Load Previous Responses ---
-if os.path.exists(response_file):
-    with open(response_file, "r", encoding="utf-8") as f:
-        responses = json.load(f)
-else:
-    responses = {}
+responses = load_responses_from_sheet(annotator_id)
 
 # --- Determine first unanswered page ---
 def find_first_unanswered_page():
@@ -51,9 +88,6 @@ if "page" not in st.session_state:
     st.session_state.page = find_first_unanswered_page()
 
 # --- Page Navigation ---
-if "page" not in st.session_state:
-    st.session_state.page = find_first_unanswered_page()
-
 st.number_input(
     f"Page (1 to {total_pages})",
     min_value=1,
@@ -63,14 +97,10 @@ st.number_input(
 )
 
 page = st.session_state.page
-
-
 start_idx = (page - 1) * QUESTIONS_PER_PAGE
 end_idx = min(start_idx + QUESTIONS_PER_PAGE, len(questions))
 
-# --- Submission tracking ---
-submitted_file = os.path.join(SUBMITTED_DIR, f"{annotator_id}_pg{page}.json")
-page_submitted = os.path.exists(submitted_file)
+page_submitted = page_already_submitted(annotator_id, page, QUESTIONS_PER_PAGE)
 
 # --- Question Loop ---
 updated = False
@@ -116,12 +146,6 @@ for q in questions[start_idx:end_idx]:
 
     st.markdown("---")
 
-# --- Save Responses ---
-if updated:
-    with open(response_file, "w", encoding="utf-8") as f:
-        json.dump(responses, f, indent=2)
-    st.success("Progress saved automatically.")
-
 # --- Submit Page ---
 if all_answered and not page_submitted:
     if st.button("✅ Submit This Page"):
@@ -129,9 +153,11 @@ if all_answered and not page_submitted:
             str(q["id"]): responses[str(q["id"])]
             for q in questions[start_idx:end_idx]
         }
-        with open(submitted_file, "w", encoding="utf-8") as f:
-            json.dump(page_data, f, indent=2)
-        st.success(f"Page {page} submitted and locked.")
-        st.rerun()
+        try:
+            save_to_gsheet(page_data, annotator_id, page)
+            st.success(f"✅ Page {page} submitted and saved to Google Sheets.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Failed to save to Google Sheets: {e}")
 elif page_submitted:
     st.info("✅ This page has been submitted and cannot be changed.")
