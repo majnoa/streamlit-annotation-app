@@ -15,23 +15,18 @@ total_pages = (len(questions) - 1) // QUESTIONS_PER_PAGE + 1
 
 # --- Connect to Google Sheets ---
 conn = st.connection("gsheets", type=GSheetsConnection)
-df = conn.read(worksheet="main")  # Read from main worksheet
-submissions_df = conn.read(worksheet="submissions")  # Read from submissions worksheet
+df = conn.read(worksheet="sheet1")  # In-progress data
+submitted_df = conn.read(worksheet="submissions")  # Final submitted pages
 
 # --- Ensure expected columns exist ---
 EXPECTED_COLUMNS = ["timestamp", "annotator_id", "page", "question_id", "answer"]
-for dataset in [df, submissions_df]:
-    if dataset.empty:
-        dataset = pd.DataFrame(columns=EXPECTED_COLUMNS)
-    else:
-        for col in EXPECTED_COLUMNS:
-            if col not in dataset.columns:
-                dataset[col] = ""
+for dframe in [df, submitted_df]:
+    for col in EXPECTED_COLUMNS:
+        if col not in dframe.columns:
+            dframe[col] = ""
 
-# --- UI Setup ---
+# --- Annotator login ---
 st.title("📝 Annotation Task")
-
-# --- Annotator Login ---
 annotator_id = st.text_input("Enter your annotator ID:")
 if not annotator_id:
     st.stop()
@@ -53,30 +48,39 @@ start = (current_page - 1) * QUESTIONS_PER_PAGE
 end = min(start + QUESTIONS_PER_PAGE, len(questions))
 
 # --- Check if page already submitted ---
-page_submitted = (
-    (submissions_df["annotator_id"] == annotator_id) &
-    (submissions_df["page"] == current_page)
+already_submitted = (
+    (submitted_df["annotator_id"] == annotator_id) &
+    (submitted_df["page"] == current_page)
 ).any()
 
-# --- Display questions for the current page ---
 st.subheader(f"🔍 Questions – Page {current_page}")
 responses = {}
 
+# --- Display questions ---
 for q in questions[start:end]:
     qid = str(q["id"])
     st.markdown(f"**Q{qid}**", unsafe_allow_html=True)
     st.markdown(q["question"], unsafe_allow_html=True)
+
+    key = f"q_{qid}"
+    saved = df[
+        (df["annotator_id"] == annotator_id) &
+        (df["question_id"] == qid)
+    ]
+    default = saved["answer"].values[0] if not saved.empty else None
+
     selected = st.radio(
-        f"Answer for Q{qid}:",
-        q["choices"],
-        key=f"q_{qid}",
-        disabled=page_submitted
+        f"Answer for Q{qid}:", 
+        q["choices"], 
+        key=key,
+        index=q["choices"].index(default) if default in q["choices"] else 0,
+        disabled=already_submitted
     )
     responses[qid] = selected
     st.markdown("---")
 
-# --- Submit answers ---
-if not page_submitted and st.button("✅ Submit This Page"):
+# --- Save if submit clicked ---
+if st.button("✅ Submit This Page") and not already_submitted:
     now = datetime.utcnow().isoformat()
     new_rows = [
         {
@@ -89,14 +93,18 @@ if not page_submitted and st.button("✅ Submit This Page"):
         for qid, answer in responses.items()
     ]
 
-    updated_submissions_df = pd.concat([submissions_df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
-
     try:
-        conn.update(data=updated_submissions_df, worksheet="submissions")
-        st.success(f"✅ Page {current_page} submitted!")
+        # Update main sheet (Sheet1)
+        updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
+        conn.update(data=updated_df, worksheet="sheet1")
+
+        # Append to submissions
+        updated_submissions = pd.concat([submitted_df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
+        conn.update(data=updated_submissions, worksheet="submissions")
+
+        st.success(f"✅ Page {current_page} submitted and finalized.")
         st.rerun()
     except Exception as e:
-        st.error(f"❌ Failed to update sheet: {e}")
-
-elif page_submitted:
-    st.info("✅ This page has already been submitted and is now locked.")
+        st.error(f"❌ Failed to update sheets: {e}")
+elif already_submitted:
+    st.info("✅ This page has already been submitted and is locked.")
