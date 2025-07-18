@@ -1,38 +1,61 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-from datetime import datetime
-import pandas as pd
 import json
+import pandas as pd
+from datetime import datetime
+from streamlit_gsheets import GSheetsConnection
 
-# --- Load questions ---
-QUESTIONS_FILE = "questions.json"
+# --- Google Sheets Helper ---
+def load_responses_from_sheet(conn: GSheetsConnection, annotator_id: str) -> dict:
+    responses = {}
+    df = conn.read(worksheet=annotator_id)
+    if df is None or df.empty:
+        return responses
+    for _, row in df.iterrows():
+        responses[str(row["question_id"])] = row["answer"]
+    return responses
+
+def page_already_submitted(conn: GSheetsConnection, annotator_id: str, page: int, total_questions: int) -> bool:
+    df = conn.read(worksheet=annotator_id)
+    if df is None or df.empty:
+        return False
+    count = df[(df["page"] == page)].shape[0]
+    return count >= total_questions
+
+def save_to_gsheet(conn: GSheetsConnection, responses: dict, annotator_id: str, page: int):
+    df = conn.read(worksheet=annotator_id)
+    if df is None:
+        df = pd.DataFrame(columns=["timestamp", "annotator_id", "page", "question_id", "answer"])
+
+    now = datetime.utcnow().isoformat()
+    new_rows = [
+        {
+            "timestamp": now,
+            "annotator_id": annotator_id,
+            "page": page,
+            "question_id": qid,
+            "answer": answer
+        }
+        for qid, answer in responses.items()
+    ]
+
+    updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+    conn.update(worksheet=annotator_id, data=updated_df)
+
+# --- Config ---
 QUESTIONS_PER_PAGE = 10
+QUESTIONS_FILE = "questions.json"
 
+# --- Load Questions ---
 with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
     questions = json.load(f)
 
 total_pages = (len(questions) - 1) // QUESTIONS_PER_PAGE + 1
 
-# --- Connect to Google Sheets ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-df = conn.read(worksheet="sheet1")  # In-progress data
-submitted_df = conn.read(worksheet="submissions")  # Final submitted pages
-
-# --- Ensure expected columns exist ---
-EXPECTED_COLUMNS = ["timestamp", "annotator_id", "page", "question_id", "answer"]
-for dframe in [df, submitted_df]:
-    for col in EXPECTED_COLUMNS:
-        if col not in dframe.columns:
-            dframe[col] = ""
-
-# --- Normalize submitted_df columns ---
-submitted_df["annotator_id"] = submitted_df["annotator_id"].astype(str).str.strip().str.lower()
-submitted_df["page"] = submitted_df["page"].astype(str)
-
-# --- Annotator login ---
-st.title("📝 Annotation Task")
-annotator_id = st.text_input("Enter your annotator ID:")
+# --- Annotator Login ---
+st.title("Annotation Task")
 ALLOWED_ANNOTATORS = {"Hawk", "Joey", "Maja", "AJ", "Qianqian", "Student1"}
+
+annotator_id = st.text_input("Enter your name or ID:")
 
 if not annotator_id:
     st.warning("Please enter your ID to begin.")
@@ -40,112 +63,94 @@ if not annotator_id:
 
 if annotator_id not in ALLOWED_ANNOTATORS:
     st.error(f"❌ '{annotator_id}' is not a valid annotator ID.")
-    st.info("Valid IDs are: " + ", ".join(sorted(ALLOWED_ANNOTATORS)))
     st.stop()
 
-normalized_id = annotator_id.strip().lower()
-st.write(f"🔍 Normalized annotator_id: `{normalized_id}`")
+# --- GSheets Connection ---
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- Page number state ---
+responses = load_responses_from_sheet(conn, annotator_id)
+
+# --- Determine first unanswered page ---
+def find_first_unanswered_page():
+    for idx, q in enumerate(questions):
+        if str(q["id"]) not in responses:
+            return idx // QUESTIONS_PER_PAGE + 1
+    return 1
+
 if "page" not in st.session_state:
-    st.session_state.page = 1
+    st.session_state.page = find_first_unanswered_page()
 
+# --- Page Navigation ---
 st.number_input(
-    f"Select page (1 to {total_pages})",
+    f"Page (1 to {total_pages})",
     min_value=1,
     max_value=total_pages,
     step=1,
     key="page"
 )
 
-current_page = st.session_state.page
-start = (current_page - 1) * QUESTIONS_PER_PAGE
-end = min(start + QUESTIONS_PER_PAGE, len(questions))
+page = st.session_state.page
+start_idx = (page - 1) * QUESTIONS_PER_PAGE
+end_idx = min(start_idx + QUESTIONS_PER_PAGE, len(questions))
 
-# --- Function to check if page is already submitted ---
-def is_page_submitted(submitted_df, annotator_id, page, expected_count):
-    page_str = str(page)
-    match = submitted_df[
-        (submitted_df["annotator_id"] == annotator_id) &
-        (submitted_df["page"] == page_str)
-    ]
-    st.write(f"🔍 Found {len(match)} submission(s) for annotator `{annotator_id}` on page `{page_str}`")
-    return len(match) >= expected_count
+page_submitted = page_already_submitted(conn, annotator_id, page, QUESTIONS_PER_PAGE)
 
-already_submitted = is_page_submitted(submitted_df, normalized_id, current_page, QUESTIONS_PER_PAGE)
-
-st.subheader(f"📄 Questions – Page {current_page}")
-responses = {}
+# --- Question Loop ---
+updated = False
 all_answered = True
 
-# --- Display questions ---
-for q in questions[start:end]:
+for q in questions[start_idx:end_idx]:
     qid = str(q["id"])
-    st.markdown(f"**Q{qid}**", unsafe_allow_html=True)
-    st.markdown(q["question"], unsafe_allow_html=True)
+    saved_choice = responses.get(qid, None)
+    choices = q["choices"]
 
-    key = f"q_{qid}"
-    saved = df[
-        (df["annotator_id"] == annotator_id) &
-        (df["question_id"] == qid)
-    ]
-    default = saved["answer"].values[0] if not saved.empty else None
-
-    choices = ["⬜ Please select an answer"] + q["choices"]
-    index = q["choices"].index(default) + 1 if default in q["choices"] else 0
-
-    selected = st.radio(
-        f"Answer for Q{qid}:",
-        choices,
-        key=key,
-        index=index,
-        disabled=already_submitted
-    )
-
-    if selected == "⬜ Please select an answer":
-        all_answered = False
+    if saved_choice in choices:
+        display_choices = choices
+        default_index = choices.index(saved_choice)
     else:
-        responses[qid] = selected
+        display_choices = ["⬜ Please select an answer"] + choices
+        default_index = 0
+
+    unanswered = saved_choice is None
+    all_answered &= not unanswered
+
+    with st.container():
+        if unanswered:
+            st.markdown(
+                f'<div style="background-color:#3E3E3D;padding:10px;border-radius:5px">'
+                f"<strong>Q{qid}:</strong> {q['question']}</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(f"**Q{qid}: {q['question']}**")
+
+        selected = st.radio(
+            f"Select an answer for Q{qid}",
+            options=display_choices,
+            index=default_index,
+            key=f"{annotator_id}_q_{qid}",
+            disabled=page_submitted
+        )
+
+        if not page_submitted and selected != "⬜ Please select an answer":
+            if responses.get(qid) != selected:
+                responses[qid] = selected
+                updated = True
 
     st.markdown("---")
 
-# --- Save if submit clicked ---
-if st.button("✅ Submit This Page") and not already_submitted:
-    if not all_answered:
-        st.warning("⚠️ Please answer all questions before submitting.")
-    else:
-        now = datetime.utcnow().isoformat()
-        new_rows = [
-            {
-                "timestamp": now,
-                "annotator_id": normalized_id,  # <- FIXED: save lowercase version
-                "page": current_page,
-                "question_id": qid,
-                "answer": answer
-            }
-            for qid, answer in responses.items()
-        ]
-
-
+# --- Submit Page ---
+if all_answered and not page_submitted:
+    if st.button("✅ Submit This Page"):
+        page_data = {
+            str(q["id"]): responses[str(q["id"])]
+            for q in questions[start_idx:end_idx]
+        }
         try:
-            st.write(f"📤 Submitting {len(new_rows)} answers for page {current_page}...")
-            updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
-            conn.update(data=updated_df, worksheet="sheet1")
-
-            updated_submissions = pd.concat([submitted_df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
-            conn.update(data=updated_submissions, worksheet="submissions")
-
-            # Reread and normalize
-            submitted_df = conn.read(worksheet="submissions")
-            submitted_df["annotator_id"] = submitted_df["annotator_id"].astype(str).str.strip().str.lower()
-            submitted_df["page"] = submitted_df["page"].astype(str)
-
-            already_submitted = is_page_submitted(submitted_df, normalized_id, current_page, QUESTIONS_PER_PAGE)
-
-            st.success(f"✅ Page {current_page} submitted and finalized.")
+            save_to_gsheet(conn, page_data, annotator_id, page)
+            st.success(f"✅ Page {page} submitted and saved to Google Sheets.")
             st.rerun()
         except Exception as e:
-            st.error(f"❌ Failed to update sheets: {e}")
-
-elif already_submitted:
-    st.info("✅ This page has already been submitted and is locked.")
+            st.error(f"❌ Failed to save to Google Sheets: {e}")
+elif page_submitted:
+    st.info("✅ This page has been submitted and cannot be changed.")
