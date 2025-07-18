@@ -21,11 +21,7 @@ def page_already_submitted(conn: GSheetsConnection, annotator_id: str, page: int
     count = df[(df["page"] == page)].shape[0]
     return count >= total_questions
 
-def save_to_gsheet(conn: GSheetsConnection, responses: dict, annotator_id: str, page: int):
-    df = conn.read(worksheet=annotator_id)
-    if df is None:
-        df = pd.DataFrame(columns=["timestamp", "annotator_id", "page", "question_id", "answer"])
-
+def save_to_gsheet(conn, responses: dict, annotator_id: str, page: int):
     now = datetime.utcnow().isoformat()
     new_rows = [
         {
@@ -37,9 +33,14 @@ def save_to_gsheet(conn: GSheetsConnection, responses: dict, annotator_id: str, 
         }
         for qid, answer in responses.items()
     ]
-
-    updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
-    conn.update(worksheet=annotator_id, data=updated_df)
+    
+    try:
+        existing_df = conn.read(worksheet=annotator_id)
+        updated_df = pd.concat([existing_df, pd.DataFrame(new_rows)], ignore_index=True)
+        conn.update(worksheet=annotator_id, data=updated_df)
+        st.success("✅ Saved responses to Google Sheet.")
+    except Exception as e:
+        st.error(f"❌ Error saving to sheet for {annotator_id}: {e}")
 
 # --- Config ---
 QUESTIONS_PER_PAGE = 10
