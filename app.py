@@ -47,11 +47,11 @@ current_page = st.session_state.page
 start = (current_page - 1) * QUESTIONS_PER_PAGE
 end = min(start + QUESTIONS_PER_PAGE, len(questions))
 
-# --- Check if page already submitted ---
-already_submitted = (
-    (submitted_df["annotator_id"] == annotator_id) &
-    (submitted_df["page"] == current_page)
-).any()
+# --- Safe check if page already submitted ---
+already_submitted = any(
+    str(row["annotator_id"]) == str(annotator_id) and str(row["page"]) == str(current_page)
+    for _, row in submitted_df.iterrows()
+)
 
 st.subheader(f"🔍 Questions – Page {current_page}")
 responses = {}
@@ -74,7 +74,6 @@ for q in questions[start:end]:
         index = q["choices"].index(default)
     else:
         index = 0
-
 
     selected = st.radio(
         f"Answer for Q{qid}:",
