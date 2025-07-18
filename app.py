@@ -5,8 +5,8 @@ import os
 # --- Config ---
 QUESTIONS_PER_PAGE = 10
 QUESTIONS_FILE = "questions.json"
-RESPONSES_DIR = "/responses"
-SUBMITTED_DIR = "/responses"
+RESPONSES_DIR = "responses"
+SUBMITTED_DIR = "responses"
 
 os.makedirs(RESPONSES_DIR, exist_ok=True)
 os.makedirs(SUBMITTED_DIR, exist_ok=True)
