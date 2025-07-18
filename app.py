@@ -21,7 +21,7 @@ def page_already_submitted(conn: GSheetsConnection, annotator_id: str, page: int
     count = df[(df["page"] == page)].shape[0]
     return count >= total_questions
 
-def save_to_gsheet(conn, responses: dict, annotator_id: str, page: int):
+def save_final_submission(conn, responses: dict, annotator_id: str, page: int):
     now = datetime.utcnow().isoformat()
     new_rows = [
         {
@@ -38,9 +38,37 @@ def save_to_gsheet(conn, responses: dict, annotator_id: str, page: int):
         existing_df = conn.read(worksheet=annotator_id)
         updated_df = pd.concat([existing_df, pd.DataFrame(new_rows)], ignore_index=True)
         conn.update(worksheet=annotator_id, data=updated_df)
-        st.success("✅ Saved responses to Google Sheet.")
+        st.success("✅ Saved final submission.")
     except Exception as e:
         st.error(f"❌ Error saving to sheet for {annotator_id}: {e}")
+
+def save_live_response(conn, annotator_id: str, page: int, qid: str, answer: str):
+    now = datetime.utcnow().isoformat()
+    new_row = {
+        "timestamp": now,
+        "annotator_id": annotator_id,
+        "page": page,
+        "question_id": qid,
+        "answer": answer
+    }
+
+    try:
+        sheet_df = conn.read(worksheet="sheet1")
+        sheet_df = sheet_df if sheet_df is not None else pd.DataFrame(columns=new_row.keys())
+
+        # Remove any previous response for this annotator/page/qid
+        mask = ~(
+            (sheet_df["annotator_id"] == annotator_id) &
+            (sheet_df["page"] == page) &
+            (sheet_df["question_id"] == qid)
+        )
+        sheet_df = sheet_df[mask]
+
+        # Append new response and write back
+        sheet_df = pd.concat([sheet_df, pd.DataFrame([new_row])], ignore_index=True)
+        conn.update(worksheet="sheet1", data=sheet_df)
+    except Exception as e:
+        st.error(f"❌ Failed live save to sheet1: {e}")
 
 # --- Config ---
 QUESTIONS_PER_PAGE = 10
@@ -97,61 +125,51 @@ end_idx = min(start_idx + QUESTIONS_PER_PAGE, len(questions))
 page_submitted = page_already_submitted(conn, annotator_id, page, QUESTIONS_PER_PAGE)
 
 # --- Question Loop ---
-updated = False
 all_answered = True
+page_data = {}
 
 for q in questions[start_idx:end_idx]:
     qid = str(q["id"])
-    saved_choice = responses.get(qid, None)
     choices = q["choices"]
+    key = f"{annotator_id}_q_{qid}"
 
-    if saved_choice in choices:
-        display_choices = choices
-        default_index = choices.index(saved_choice)
+    saved_choice = responses.get(qid, None)
+    default_index = choices.index(saved_choice) if saved_choice in choices else 0
+    display_choices = ["⬜ Please select an answer"] + choices
+    index = display_choices.index(saved_choice) if saved_choice in display_choices else 0
+
+    selected = st.radio(
+        f"Q{qid}: {q['question']}",
+        options=display_choices,
+        index=index,
+        key=key,
+        disabled=page_submitted
+    )
+
+    if selected == "⬜ Please select an answer":
+        all_answered = False
     else:
-        display_choices = ["⬜ Please select an answer"] + choices
-        default_index = 0
+        page_data[qid] = selected
+        if not page_submitted and selected != saved_choice:
+            save_live_response(conn, annotator_id, page, qid, selected)
 
-    unanswered = saved_choice is None
-    all_answered &= not unanswered
-
-    with st.container():
-        if unanswered:
-            st.markdown(
-                f'<div style="background-color:#3E3E3D;padding:10px;border-radius:5px">'
-                f"<strong>Q{qid}:</strong> {q['question']}</div>",
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(f"**Q{qid}: {q['question']}**")
-
-        selected = st.radio(
-            f"Select an answer for Q{qid}",
-            options=display_choices,
-            index=default_index,
-            key=f"{annotator_id}_q_{qid}",
-            disabled=page_submitted
+    # Highlight unanswered
+    if selected == "⬜ Please select an answer":
+        st.markdown(
+            f'<div style="background-color:#3E3E3D;padding:10px;border-radius:5px">Please answer this question</div>',
+            unsafe_allow_html=True
         )
-
-        if not page_submitted and selected != "⬜ Please select an answer":
-            if responses.get(qid) != selected:
-                responses[qid] = selected
-                updated = True
 
     st.markdown("---")
 
 # --- Submit Page ---
 if all_answered and not page_submitted:
     if st.button("✅ Submit This Page"):
-        page_data = {
-            str(q["id"]): responses[str(q["id"])]
-            for q in questions[start_idx:end_idx]
-        }
         try:
-            save_to_gsheet(conn, page_data, annotator_id, page)
-            st.success(f"✅ Page {page} submitted and saved to Google Sheets.")
+            save_final_submission(conn, page_data, annotator_id, page)
+            st.success(f"✅ Page {page} submitted and saved to {annotator_id}'s worksheet.")
             st.rerun()
         except Exception as e:
-            st.error(f"❌ Failed to save to Google Sheets: {e}")
+            st.error(f"❌ Failed to save final submission: {e}")
 elif page_submitted:
-    st.info("✅ This page has been submitted and cannot be changed.")
+    st.info("✅ This page has already been submitted and cannot be changed.")
