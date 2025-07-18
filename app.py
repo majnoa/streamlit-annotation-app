@@ -118,13 +118,14 @@ if st.button("✅ Submit This Page") and not already_submitted:
         new_rows = [
             {
                 "timestamp": now,
-                "annotator_id": annotator_id,
+                "annotator_id": normalized_id,  # <- FIXED: save lowercase version
                 "page": current_page,
                 "question_id": qid,
                 "answer": answer
             }
             for qid, answer in responses.items()
         ]
+
 
         try:
             st.write(f"📤 Submitting {len(new_rows)} answers for page {current_page}...")
