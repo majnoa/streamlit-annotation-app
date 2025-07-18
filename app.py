@@ -25,6 +25,10 @@ for dframe in [df, submitted_df]:
         if col not in dframe.columns:
             dframe[col] = ""
 
+# --- Normalize column types ---
+submitted_df["annotator_id"] = submitted_df["annotator_id"].astype(str).str.strip().str.lower()
+submitted_df["page"] = submitted_df["page"].astype(str)
+
 # --- Annotator login ---
 st.title("📝 Annotation Task")
 annotator_id = st.text_input("Enter your annotator ID:")
@@ -38,6 +42,8 @@ if annotator_id not in ALLOWED_ANNOTATORS:
     st.error(f"❌ '{annotator_id}' is not a valid annotator ID.")
     st.info("Valid IDs are: " + ", ".join(sorted(ALLOWED_ANNOTATORS)))
     st.stop()
+
+normalized_id = annotator_id.strip().lower()
 
 # --- Page number state ---
 if "page" not in st.session_state:
@@ -58,11 +64,11 @@ end = min(start + QUESTIONS_PER_PAGE, len(questions))
 # --- Function to check if page is already submitted ---
 def is_page_submitted(submitted_df, annotator_id, page):
     return any(
-        str(row["annotator_id"]) == str(annotator_id) and str(row["page"]) == str(page)
+        row["annotator_id"] == annotator_id and row["page"] == str(page)
         for _, row in submitted_df.iterrows()
     )
 
-already_submitted = is_page_submitted(submitted_df, annotator_id, current_page)
+already_submitted = is_page_submitted(submitted_df, normalized_id, current_page)
 
 st.subheader(f"🔍 Questions – Page {current_page}")
 responses = {}
@@ -76,7 +82,7 @@ for q in questions[start:end]:
 
     key = f"q_{qid}"
     saved = df[
-        (df["annotator_id"] == annotator_id) &
+        (df["annotator_id"] == annotator_id) & 
         (df["question_id"] == qid)
     ]
     default = saved["answer"].values[0] if not saved.empty else None
@@ -84,7 +90,7 @@ for q in questions[start:end]:
     # Prepare choices with a default placeholder
     choices = ["⬜ Please select an answer"] + q["choices"]
     if default in q["choices"]:
-        index = q["choices"].index(default) + 1  # shift by 1 due to placeholder
+        index = q["choices"].index(default) + 1
     else:
         index = 0
 
@@ -96,7 +102,6 @@ for q in questions[start:end]:
         disabled=already_submitted
     )
 
-    # If not answered yet, mark that not all answered
     if selected == "⬜ Please select an answer":
         all_answered = False
     else:
@@ -122,17 +127,16 @@ if st.button("✅ Submit This Page") and not already_submitted:
         ]
 
         try:
-            # Update in-progress sheet
             updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
             conn.update(data=updated_df, worksheet="sheet1")
 
-            # Append to final submissions
             updated_submissions = pd.concat([submitted_df, pd.DataFrame(new_rows)], ignore_index=True)[EXPECTED_COLUMNS]
             conn.update(data=updated_submissions, worksheet="submissions")
 
-            # 🔁 Reread to ensure locked state is updated immediately
             submitted_df = conn.read(worksheet="submissions")
-            already_submitted = is_page_submitted(submitted_df, annotator_id, current_page)
+            submitted_df["annotator_id"] = submitted_df["annotator_id"].astype(str).str.strip().str.lower()
+            submitted_df["page"] = submitted_df["page"].astype(str)
+            already_submitted = is_page_submitted(submitted_df, normalized_id, current_page)
 
             st.success(f"✅ Page {current_page} submitted and finalized.")
             st.rerun()
