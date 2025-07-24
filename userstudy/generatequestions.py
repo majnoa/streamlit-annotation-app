@@ -4,7 +4,7 @@ from nltk.corpus import wordnet as wn
 from tqdm import tqdm
 
 # --- Config ---
-INPUT_CSV = "balanced_user_study_sample_500_unique_gt.csv"
+INPUT_CSV = "balanced_user_study_nodup_final_half.csv"
 OUTPUT_JSON = "/home/maja/HOI/streamlit/questions.json"
 
 # --- Load Sample ---
